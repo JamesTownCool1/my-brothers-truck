@@ -254,7 +254,7 @@ function PersonCard({
         </div>
       </Link>
       {showPhone && person.phone && (
-        
+        <a
           href={`tel:${person.phone}`}
           className="mt-4 flex items-center justify-center gap-2 rounded-lg border-2 border-ink-200 py-2 text-sm font-medium hover:bg-ink-50"
         >
