@@ -1,14 +1,6 @@
 /**
  * POST /api/jobs/[id]/status
  * Body: { action: "START" | "COMPLETE" | "CANCEL" }
- *
- * Encodes the valid state transitions:
- *   ACCEPTED   --START--> IN_PROGRESS
- *   IN_PROGRESS --COMPLETE--> COMPLETED
- *   ACCEPTED|IN_PROGRESS --CANCEL--> CANCELLED
- *
- * Only the assigned helper (or admin) can START/COMPLETE.
- * Either party can CANCEL.
  */
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -18,7 +10,8 @@ import { jobStatusSchema } from '@/lib/validations';
 import { notify } from '@/lib/notifications';
 import type { JobStatus } from '@prisma/client';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -30,7 +23,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
-  const job = await prisma.job.findUnique({ where: { id: params.id } });
+  const job = await prisma.job.findUnique({ where: { id } });
   if (!job) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const isCustomer = job.customerId === session.user.id;
@@ -41,7 +34,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Build the state transition
   let nextStatus: JobStatus;
   const patch: Record<string, unknown> = {};
 
@@ -81,11 +73,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const updated = await prisma.job.update({
-    where: { id: params.id },
+    where: { id },
     data: { ...patch, status: nextStatus },
   });
 
-  // Fan out the right notifications
   const otherPartyId = isCustomer ? job.helperId : job.customerId;
   if (otherPartyId) {
     const msg =

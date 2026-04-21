@@ -6,17 +6,14 @@ import { Avatar, Card } from '@/components/ui/Card';
 import { StarRating } from '@/components/ui/StarRating';
 import { formatRelative } from '@/lib/utils';
 
-/**
- * Public profile — the page you land on when you tap someone's name.
- * Shows their bio, rating, recent reviews, and (for helpers) their truck.
- */
 export default async function PublicProfilePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const user = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: {
       id: true, name: true, image: true, bio: true, role: true,
       avgRating: true, ratingCount: true, createdAt: true,
@@ -96,7 +93,6 @@ export default async function PublicProfilePage({
         )}
       </Card>
 
-      {/* Reviews */}
       <div className="mt-10">
         <h2 className="font-display text-2xl font-bold mb-4">Recent reviews</h2>
         {user.reviewsReceived.length === 0 ? (

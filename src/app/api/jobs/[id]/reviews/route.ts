@@ -1,14 +1,5 @@
 /**
  * /api/jobs/[id]/reviews
- *
- * GET  — list reviews for a job (both directions)
- * POST — post a review. Only allowed when:
- *        - the job is COMPLETED
- *        - you are one of the two parties
- *        - you haven't already reviewed this job (unique constraint)
- *
- * Also recomputes the reviewee's avgRating / ratingCount in the same
- * transaction so profile scores stay accurate without a nightly job.
  */
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -17,9 +8,10 @@ import { prisma } from '@/lib/prisma';
 import { reviewSchema } from '@/lib/validations';
 import { notify } from '@/lib/notifications';
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const reviews = await prisma.review.findMany({
-    where: { jobId: params.id, hidden: false },
+    where: { jobId: id, hidden: false },
     include: {
       reviewer: { select: { id: true, name: true, image: true } },
       reviewee: { select: { id: true, name: true, image: true } },
@@ -29,7 +21,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   return NextResponse.json({ reviews });
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -42,7 +35,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const job = await prisma.job.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: { id: true, status: true, customerId: true, helperId: true, title: true },
   });
   if (!job) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -54,7 +47,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     );
   }
 
-  // Determine reviewee (the other party)
   let revieweeId: string | null = null;
   if (job.customerId === session.user.id && job.helperId) revieweeId = job.helperId;
   else if (job.helperId === session.user.id) revieweeId = job.customerId;
@@ -63,8 +55,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Use a transaction: create review + update aggregate in lockstep so the
-  // denormalized avgRating can never drift from the underlying reviews table.
   const result = await prisma.$transaction(async (tx) => {
     const existing = await tx.review.findUnique({
       where: { jobId_reviewerId: { jobId: job.id, reviewerId: session.user.id } },
@@ -81,7 +71,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       },
     });
 
-    // Recompute aggregate from source of truth
     const agg = await tx.review.aggregate({
       where: { revieweeId: revieweeId!, hidden: false },
       _avg: { rating: true },

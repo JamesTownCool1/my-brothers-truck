@@ -17,7 +17,8 @@ const schema = z.object({
   finalPriceCents: z.number().int().min(500).max(500000).optional(),
 });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -32,17 +33,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Invalid price' }, { status: 400 });
   }
 
-  // Must already exist + be OPEN
-  const job = await prisma.job.findUnique({ where: { id: params.id } });
+  const job = await prisma.job.findUnique({ where: { id } });
   if (!job) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (job.customerId === session.user.id) {
     return NextResponse.json({ error: "You can't accept your own job" }, { status: 400 });
   }
 
-  // Atomic guard: only succeeds if status is still OPEN and helperId still null.
-  // Prevents a race between two helpers both hitting this endpoint.
   const result = await prisma.job.updateMany({
-    where: { id: params.id, status: 'OPEN', helperId: null },
+    where: { id, status: 'OPEN', helperId: null },
     data: {
       helperId: session.user.id,
       status: 'ACCEPTED',
@@ -59,14 +57,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const updated = await prisma.job.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       customer: { select: { id: true, name: true } },
       helper:   { select: { id: true, name: true } },
     },
   });
 
-  // Tell the customer — push to their notification feed
   if (updated) {
     await notify({
       userId: updated.customerId,

@@ -10,14 +10,15 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { notify } from '@/lib/notifications';
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const job = await prisma.job.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       customer: { select: { id: true, name: true, image: true, phone: true, avgRating: true, ratingCount: true } },
       helper:   { select: { id: true, name: true, image: true, phone: true, avgRating: true, ratingCount: true } },
@@ -44,13 +45,14 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   return NextResponse.json({ job });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const job = await prisma.job.findUnique({ where: { id: params.id } });
+  const job = await prisma.job.findUnique({ where: { id } });
   if (!job) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 });
   }
@@ -66,7 +68,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   }
 
   const updated = await prisma.job.update({
-    where: { id: params.id },
+    where: { id },
     data: { status: 'CANCELLED', cancelledAt: new Date() },
   });
 

@@ -13,23 +13,13 @@ import { JobActions } from '@/components/jobs/JobActions';
 import { ReviewSection } from '@/components/jobs/ReviewSection';
 import { formatDistance, formatPrice, formatRelative } from '@/lib/utils';
 
-/**
- * Job detail page — the big one.
- *
- * Renders everything a party to a job needs:
- *   • Status timeline
- *   • Map of the route
- *   • Customer/helper cards
- *   • Chat
- *   • Action buttons (accept / start / complete / cancel / pay)
- *   • Review form once completed
- */
-export default async function JobPage({ params }: { params: { id: string } }) {
+export default async function JobPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
   const job = await prisma.job.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       customer: {
         select: { id: true, name: true, image: true, phone: true, avgRating: true, ratingCount: true },
@@ -50,7 +40,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
 
   if (!job) notFound();
 
-  // Authorization
   const userId = session.user.id;
   const isCustomer = job.customerId === userId;
   const isHelper = job.helperId === userId;
@@ -64,8 +53,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
   const isParty = isCustomer || isHelper;
   const counterpart = isCustomer ? job.helper : job.customer;
   const finalPrice = job.finalPriceCents ?? job.estimatedPriceCents;
-
-  // Has the current user already left a review?
   const myReview = job.reviews.find((r) => r.reviewerId === userId);
 
   return (
@@ -77,7 +64,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
         <ArrowLeft size={14} /> Back to dashboard
       </Link>
 
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <StatusBadge status={job.status} />
@@ -107,7 +93,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Status timeline */}
       <div className="mt-8 mb-8 relative">
         <Card className="p-6">
           <StatusTimeline
@@ -122,9 +107,7 @@ export default async function JobPage({ params }: { params: { id: string } }) {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* LEFT: details + map */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Actions */}
           <JobActions
             jobId={job.id}
             status={job.status}
@@ -135,7 +118,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
             isPaid={!!job.paidAt}
           />
 
-          {/* Route */}
           <Card className="p-6">
             <h2 className="font-display text-xl font-bold mb-4">Route</h2>
             <div className="grid sm:grid-cols-2 gap-4 mb-4">
@@ -170,7 +152,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
             </div>
           </Card>
 
-          {/* Description */}
           <Card className="p-6">
             <h2 className="font-display text-xl font-bold mb-3">Details</h2>
             <div className="prose-mbt text-ink-800 whitespace-pre-wrap">{job.description}</div>
@@ -183,7 +164,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
             )}
           </Card>
 
-          {/* Chat — only for the parties */}
           {isParty && job.helperId && (
             <ChatWindow
               jobId={job.id}
@@ -195,7 +175,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
             />
           )}
 
-          {/* Reviews */}
           {job.status === 'COMPLETED' && isParty && (
             <ReviewSection
               jobId={job.id}
@@ -209,7 +188,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
           )}
         </div>
 
-        {/* RIGHT: people */}
         <aside className="space-y-6">
           {counterpart ? (
             <PersonCard
@@ -226,7 +204,6 @@ export default async function JobPage({ params }: { params: { id: string } }) {
             </Card>
           ) : null}
 
-          {/* Customer is always shown to helpers too */}
           {isHelper && (
             <PersonCard title="Customer" person={job.customer} showPhone />
           )}
@@ -277,7 +254,7 @@ function PersonCard({
         </div>
       </Link>
       {showPhone && person.phone && (
-        <a
+        
           href={`tel:${person.phone}`}
           className="mt-4 flex items-center justify-center gap-2 rounded-lg border-2 border-ink-200 py-2 text-sm font-medium hover:bg-ink-50"
         >
