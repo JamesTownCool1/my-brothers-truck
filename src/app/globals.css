@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------
+   Design system — "My Brothers Truck"
+   Aesthetic: working-class warmth + editorial precision.
+   Pairs a chunky display serif (Fraunces) with a crisp grotesk body
+   (Geist). Rusty orange + diesel black + paper-white.
+   ------------------------------------------------------------------ */
+
+:root {
+  --background: #fbf9f5;  /* warm off-white, like manila paper */
+  --foreground: #0c0a09;
+  --muted: #78716c;
+  --border: #e7e5e4;
+  --brand: #ff7a11;       /* signature orange */
+  --brand-dark: #c74608;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-feature-settings: 'ss01', 'cv02', 'cv03'; /* fancy Geist glyphs */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle grain overlay — gives the whole app the feel of newsprint.
+   Pure CSS (no image), a repeating radial-gradient at tiny scale. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  z-index: 1;
+  background-image: radial-gradient(circle at 1px 1px, #000 1px, transparent 0);
+  background-size: 3px 3px;
+}
+
+/* Display type: chunky serif with optical sizes */
+.font-display {
+  font-family: var(--font-display), 'Fraunces', Georgia, serif;
+  font-feature-settings: 'ss01', 'ss02';
+  letter-spacing: -0.02em;
+}
+
+/* Ticker animation for the landing page marquee */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: ticker 40s linear infinite;
+}
+
+/* Custom scrollbar for chat + lists */
+.nice-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.nice-scroll::-webkit-scrollbar-track { background: transparent; }
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 4px;
+}
+.nice-scroll::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+
+/* A utility for stamp-style headings */
+.stamp {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1.5px solid currentColor;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Focus ring — accessible but on-brand */
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Buttons have a subtle press interaction */
+button, a {
+  transition: transform 0.08s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+button:active, a:active { transform: translateY(1px); }
+
+/* Prose defaults for job descriptions etc. */
+.prose-mbt p { margin-bottom: 1em; line-height: 1.65; }
