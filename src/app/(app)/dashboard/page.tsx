@@ -185,7 +185,7 @@ function StatCard({
 }: {
   label: string;
   value: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: React.ElementType;
 }) {
   return (
     <Card className="p-5">
