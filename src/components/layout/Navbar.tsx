@@ -19,9 +19,19 @@ export function Navbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Close mobile menu whenever the route changes
   useEffect(() => setOpen(false), [pathname]);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setUserMenuOpen(false);
+    if (userMenuOpen) {
+      document.addEventListener('click', handleClick);
+      return () => document.removeEventListener('click', handleClick);
+    }
+  }, [userMenuOpen]);
 
   if (!session?.user) return null;
 
@@ -72,9 +82,50 @@ export function Navbar() {
         {/* Right side */}
         <div className="flex items-center gap-2">
           <NotificationBell />
-          <Link href="/profile" className="hidden sm:block">
+          
+          {/* Desktop user menu */}
+          <div className="hidden md:block relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setUserMenuOpen(!userMenuOpen);
+              }}
+              className="flex items-center gap-2 rounded-lg border-2 border-ink-200 bg-white px-3 py-1.5 text-sm font-medium hover:bg-ink-50"
+            >
+              <Avatar src={session.user.image} name={session.user.name} size={28} />
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-ink-600">
+                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            
+            {userMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 rounded-lg border-2 border-ink-200 bg-white shadow-lg">
+                <div className="p-3 border-b border-ink-100">
+                  <div className="text-sm font-medium text-ink-900 truncate">{session.user.name}</div>
+                  <div className="text-xs text-ink-500 truncate">{session.user.email}</div>
+                </div>
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 hover:bg-ink-50 font-medium"
+                >
+                  <UserIcon size={14} /> Profile
+                </Link>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 font-medium text-left"
+                >
+                  <LogOut size={14} /> Sign out
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile avatar (just shows, doesn't open menu) */}
+          <Link href="/profile" className="md:hidden">
             <Avatar src={session.user.image} name={session.user.name} size={36} />
           </Link>
+
+          {/* Mobile hamburger */}
           <button
             onClick={() => setOpen((o) => !o)}
             className="md:hidden rounded-lg border-2 border-ink-200 p-2"
