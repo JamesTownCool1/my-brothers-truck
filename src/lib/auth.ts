@@ -18,7 +18,7 @@ import { prisma } from './prisma';
 import type { UserRole } from '@prisma/client';
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
   session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 }, // 30 days
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
